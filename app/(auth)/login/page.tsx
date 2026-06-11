@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginInput } from "@/lib/validations/user";
 import { loginAction } from "@/lib/actions/auth";
+import { signIn } from "next-auth/react";
+import { getDashboardUrlAction } from "@/lib/actions/auth";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -30,9 +32,18 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginInput) => {
     setIsLoading(true);
     try {
-      const result = await loginAction(data);
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: data.email,
+        password: data.password,
+      });
+
       if (result?.error) {
-        toast.error(result.error);
+        toast.error("Email atau password salah");
+      } else if (result?.ok) {
+        toast.success("Berhasil masuk!");
+        const url = await getDashboardUrlAction();
+        window.location.href = url;
       }
     } catch {
       toast.error("Terjadi kesalahan. Silakan coba lagi.");
