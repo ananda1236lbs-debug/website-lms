@@ -7,20 +7,30 @@ import { AuthError } from "next-auth";
 
 export async function loginAction(data: any) {
   try {
-    await signIn("credentials", {
-      email: data.email,
-      password: data.password,
-      redirect: false,
-    });
     const user = await prisma.user.findUnique({
       where: { email: data.email },
       select: { role: true }
     });
-    return { success: true, role: user?.role };
+    
+    const roleRedirects: Record<string, string> = {
+      super_admin: "/super-admin/dashboard",
+      admin: "/admin/dashboard",
+      dosen: "/dosen/dashboard",
+      mahasiswa: "/mahasiswa/dashboard",
+    };
+    
+    const dashboardUrl = user?.role ? roleRedirects[user.role] : "/login";
+
+    await signIn("credentials", {
+      email: data.email,
+      password: data.password,
+      redirectTo: dashboardUrl,
+    });
   } catch (error) {
     if (error instanceof AuthError) {
       return { error: "Email atau password salah" };
     }
+    // Required for Next.js redirects
     throw error;
   }
 }

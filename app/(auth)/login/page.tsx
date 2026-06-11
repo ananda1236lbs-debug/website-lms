@@ -37,20 +37,11 @@ export default function LoginPage() {
 
       if (result?.error) {
         toast.error("Email atau password salah");
-      } else if (result?.success) {
-        toast.success("Berhasil masuk!");
-        
-        const roleRedirects: Record<string, string> = {
-          super_admin: "/super-admin/dashboard",
-          admin: "/admin/dashboard",
-          dosen: "/dosen/dashboard",
-          mahasiswa: "/mahasiswa/dashboard",
-        };
-        
-        const dashboardUrl = result.role ? roleRedirects[result.role] : "/login";
-        window.location.href = dashboardUrl;
       }
-    } catch {
+    } catch (error: any) {
+      if (error?.message === "NEXT_REDIRECT" || error?.digest?.startsWith("NEXT_REDIRECT")) {
+        throw error;
+      }
       toast.error("Terjadi kesalahan. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
