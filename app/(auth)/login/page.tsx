@@ -35,8 +35,7 @@ export default function LoginPage() {
         toast.error(result.error);
       } else if (result.success && result.redirect) {
         toast.success("Berhasil masuk!");
-        router.push(result.redirect);
-        router.refresh();
+        window.location.href = result.redirect;
       }
     } catch {
       toast.error("Terjadi kesalahan. Silakan coba lagi.");
