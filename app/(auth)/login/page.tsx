@@ -39,9 +39,16 @@ export default function LoginPage() {
         toast.error("Email atau password salah");
       } else if (result?.success) {
         toast.success("Berhasil masuk!");
-        // Let the middleware handle the dashboard redirection
-        // by reloading the /login route which will intercept and redirect to the correct dashboard
-        window.location.href = "/login";
+        
+        const roleRedirects: Record<string, string> = {
+          super_admin: "/super-admin/dashboard",
+          admin: "/admin/dashboard",
+          dosen: "/dosen/dashboard",
+          mahasiswa: "/mahasiswa/dashboard",
+        };
+        
+        const dashboardUrl = result.role ? roleRedirects[result.role] : "/login";
+        window.location.href = dashboardUrl;
       }
     } catch {
       toast.error("Terjadi kesalahan. Silakan coba lagi.");

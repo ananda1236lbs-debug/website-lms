@@ -48,24 +48,7 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // If not authenticated and trying to access protected route
-  if (!isLoggedIn) {
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
 
-  // Check role-based access
-  if (userRole) {
-    for (const [basePath, allowedRoles] of Object.entries(rolePathMap)) {
-      if (pathname.startsWith(basePath)) {
-        if (!allowedRoles.includes(userRole)) {
-          return NextResponse.redirect(new URL("/access-denied", req.url));
-        }
-        break;
-      }
-    }
-  }
 
   // Add security headers
   const response = NextResponse.next();

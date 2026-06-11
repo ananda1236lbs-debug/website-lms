@@ -12,7 +12,11 @@ export async function loginAction(data: any) {
       password: data.password,
       redirect: false,
     });
-    return { success: true };
+    const user = await prisma.user.findUnique({
+      where: { email: data.email },
+      select: { role: true }
+    });
+    return { success: true, role: user?.role };
   } catch (error) {
     if (error instanceof AuthError) {
       return { error: "Email atau password salah" };
