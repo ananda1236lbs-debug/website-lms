@@ -36,7 +36,7 @@ export async function getUsers(params: {
     ];
   }
 
-  if (role) where.role = role as Role;
+  if (role && role !== "all") where.role = role as Role;
   if (isActive !== undefined && isActive !== "") where.isActive = isActive === "true";
 
   const [users, total] = await Promise.all([

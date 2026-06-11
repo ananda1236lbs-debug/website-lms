@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginInput } from "@/lib/validations/user";
 
 import { signIn } from "next-auth/react";
-import { getDashboardUrlAction } from "@/lib/actions/auth";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -42,8 +41,9 @@ export default function LoginPage() {
         toast.error("Email atau password salah");
       } else if (result?.ok) {
         toast.success("Berhasil masuk!");
-        const url = await getDashboardUrlAction();
-        window.location.href = url;
+        // Let the middleware handle the dashboard redirection
+        // by reloading the /login route which will intercept and redirect to the correct dashboard
+        window.location.href = "/login";
       }
     } catch {
       toast.error("Terjadi kesalahan. Silakan coba lagi.");
