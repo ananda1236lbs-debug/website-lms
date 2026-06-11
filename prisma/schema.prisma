@@ -1,0 +1,396 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Enums based on your existing types
+enum Role {
+  super_admin
+  admin
+  dosen
+  mahasiswa
+}
+
+enum NotificationType {
+  new_material
+  new_assignment
+  grade_published
+  deadline_reminder
+  system
+}
+
+enum AssignmentStatus {
+  draft
+  published
+  closed
+}
+
+enum MaterialStatus {
+  draft
+  published
+}
+
+enum GradeLetterScale {
+  A
+  AB
+  B
+  BC
+  C
+  D
+  E
+}
+
+enum Jenjang {
+  S1
+  S2
+  S3
+  D3
+  D4
+}
+
+enum CalendarEventType {
+  academic
+  holiday
+  exam
+  event
+}
+
+enum FinalGradeStatus {
+  draft
+  published
+}
+
+// Models mapped from Mongoose
+model User {
+  id             String        @id @default(cuid())
+  username       String        @unique
+  email          String        @unique
+  password       String
+  role           Role          @default(mahasiswa)
+  avatar         String?       @default("")
+  phone          String?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Profile fields (flattened for RDBMS)
+  fullName       String
+  nim            String?
+  nip            String?
+  programStudiId String?
+  semester       Int?
+  angkatan       Int?
+
+  // Relations
+  programStudi   ProgramStudi? @relation(fields: [programStudiId], references: [id])
+  auditLogs      AuditLog[]
+  sessions       Session[]
+  notifications  Notification[]
+
+  // Mahasiswa relations
+  enrolledKelas  Kelas[]       @relation("StudentsInKelas")
+  submissions    Submission[]  @relation("StudentSubmissions")
+  finalGrades    FinalGrade[]  @relation("StudentFinalGrades")
+
+  // Dosen relations
+  taughtKelas    Kelas[]       @relation("DosenKelas")
+  materials      Material[]    @relation("DosenMaterials")
+  gradedSubmissions Submission[] @relation("GradedSubmissions")
+
+  @@index([email])
+  @@index([username])
+  @@index([role])
+  @@index([isActive])
+  @@index([nim])
+  @@index([nip])
+}
+
+model ProgramStudi {
+  id        String   @id @default(cuid())
+  kode      String   @unique
+  nama      String
+  fakultas  String
+  jenjang   Jenjang
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users        User[]
+  mataKuliahs  MataKuliah[]
+
+  @@index([kode])
+  @@index([fakultas])
+  @@index([isActive])
+}
+
+model MataKuliah {
+  id             String       @id @default(cuid())
+  kodeMK         String       @unique
+  nama           String
+  sks            Int
+  semester       Int
+  programStudiId String
+  description    String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  programStudi   ProgramStudi @relation(fields: [programStudiId], references: [id])
+  kelas          Kelas[]
+
+  @@index([kodeMK])
+  @@index([programStudiId])
+  @@index([isActive])
+}
+
+model Kelas {
+  id             String   @id @default(cuid())
+  namaKelas      String
+  mataKuliahId   String
+  dosenId        String
+  tahunAjaran    String
+  semester       String
+  kapasitas      Int
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Schedule fields (flattened)
+  scheduleDay       String?
+  scheduleStartTime String?
+  scheduleEndTime   String?
+  scheduleRoom      String?
+
+  // Relations
+  mataKuliah     MataKuliah   @relation(fields: [mataKuliahId], references: [id])
+  dosen          User         @relation("DosenKelas", fields: [dosenId], references: [id])
+  students       User[]       @relation("StudentsInKelas")
+  materials      Material[]
+  assignments    Assignment[]
+  finalGrades    FinalGrade[]
+  gradeComponents GradeComponent[]
+
+  @@index([mataKuliahId])
+  @@index([dosenId])
+  @@index([isActive])
+}
+
+model GradeComponent {
+  id        String @id @default(cuid())
+  name      String
+  weight    Int
+  kelasId   String
+  
+  kelas     Kelas  @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+}
+
+model Material {
+  id             String         @id @default(cuid())
+  kelasId        String
+  dosenId        String
+  title          String
+  description    String?
+  meetingNumber  Int
+  status         MaterialStatus @default(draft)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // File fields (flattened)
+  fileUrl        String
+  fileName       String
+  fileSize       Int
+  fileType       String
+  fileUploadedAt DateTime       @default(now())
+
+  // Relations
+  kelas          Kelas          @relation(fields: [kelasId], references: [id])
+  dosen          User           @relation("DosenMaterials", fields: [dosenId], references: [id])
+
+  @@index([kelasId])
+  @@index([dosenId])
+  @@index([status])
+}
+
+model Assignment {
+  id             String           @id @default(cuid())
+  kelasId        String
+  title          String
+  description    String
+  deadline       DateTime
+  allowedFormats String[]         @default(["pdf", "docx", "zip"])
+  maxFileSize    Int              @default(10)
+  weight         Int
+  status         AssignmentStatus @default(draft)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  // Relations
+  kelas          Kelas            @relation(fields: [kelasId], references: [id])
+  submissions    Submission[]
+
+  @@index([kelasId])
+  @@index([deadline])
+  @@index([status])
+}
+
+model Submission {
+  id             String    @id @default(cuid())
+  assignmentId   String
+  studentId      String
+  submittedAt    DateTime  @default(now())
+  isLate         Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // File fields
+  fileUrl        String
+  fileName       String
+  fileSize       Int
+  fileType       String
+  fileUploadedAt DateTime  @default(now())
+
+  // Grade fields
+  gradeScore     Float?
+  gradeFeedback  String?
+  gradeGradedById String?
+  gradeGradedAt  DateTime?
+  gradeIsDraft   Boolean?  @default(true)
+
+  // Relations
+  assignment     Assignment @relation(fields: [assignmentId], references: [id])
+  student        User       @relation("StudentSubmissions", fields: [studentId], references: [id])
+  gradedBy       User?      @relation("GradedSubmissions", fields: [gradeGradedById], references: [id])
+
+  @@index([assignmentId])
+  @@index([studentId])
+}
+
+model FinalGrade {
+  id         String           @id @default(cuid())
+  kelasId    String
+  studentId  String
+  score      Float
+  letter     GradeLetterScale
+  status     FinalGradeStatus @default(draft)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  // Relations
+  kelas      Kelas            @relation(fields: [kelasId], references: [id])
+  student    User             @relation("StudentFinalGrades", fields: [studentId], references: [id])
+  components FinalGradeComponent[]
+
+  @@index([kelasId])
+  @@index([studentId])
+  @@unique([kelasId, studentId])
+}
+
+model FinalGradeComponent {
+  id           String     @id @default(cuid())
+  finalGradeId String
+  name         String
+  weight       Int
+  score        Float
+
+  finalGrade   FinalGrade @relation(fields: [finalGradeId], references: [id], onDelete: Cascade)
+}
+
+model AcademicCalendar {
+  id          String            @id @default(cuid())
+  title       String
+  type        CalendarEventType
+  startDate   DateTime
+  endDate     DateTime
+  description String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([startDate, endDate])
+  @@index([type])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  model     String
+  modelId   String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([model])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  device       String?
+  browser      String?
+  refreshToken String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([refreshToken])
+}
+
+model Setting {
+  id               String   @id @default(cuid())
+  institutionName  String
+  logo             String?
+  activeSemester   String
+  tahunAjaran      String
+  uploadLimit      Int
+  
+  // Grading scale JSON (A, AB, B, BC, C, D, E with min/max)
+  gradingScale     Json
+  
+  // Theme
+  primaryColor     String
+  secondaryColor   String
+  updatedAt        DateTime @updatedAt
+}
+
+model DashboardStats {
+  id         String   @id @default(cuid())
+  type       String   // "super_admin" | "admin"
+  
+  // Data JSON
+  data       Json
+  updatedAt  DateTime @updatedAt
+}
