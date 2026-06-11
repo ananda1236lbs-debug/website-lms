@@ -2,9 +2,10 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
-import { Role } from "@prisma/client";
+import { authConfig } from "./auth.config";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  ...authConfig,
   providers: [
     Credentials({
       name: "Credentials",
@@ -49,43 +50,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  session: {
-    strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
-  },
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id as string;
-        token.email = user.email!;
-        token.username = user.username;
-        token.role = user.role;
-        token.avatar = user.avatar;
-        token.fullName = user.fullName;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      session.user = {
-        id: token.id as string,
-        email: token.email as string,
-        username: token.username as string,
-        role: token.role as Role,
-        avatar: token.avatar as string,
-        fullName: token.fullName as string,
-      } as any;
-      return session;
-    },
-    async redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      if (new URL(url).origin === baseUrl) return url;
-      return baseUrl;
-    },
-  },
-  trustHost: true,
-  secret: process.env.NEXTAUTH_SECRET,
 });

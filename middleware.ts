@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 import { Role } from "@/types";
+
+const { auth } = NextAuth(authConfig);
 
 const publicPaths = ["/", "/about", "/contact", "/login", "/forgot-password"];
 const authPaths = ["/login", "/forgot-password"];
