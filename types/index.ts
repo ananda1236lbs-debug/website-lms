@@ -269,6 +269,4 @@ declare module "next-auth" {
   interface User extends SessionUser {}
 }
 
-declare module "next-auth/jwt" {
-  interface JWT extends SessionUser {}
-}
+
