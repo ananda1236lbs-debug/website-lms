@@ -12,19 +12,11 @@ export async function loginAction(formData: { email: string; password: string })
   }
 
   try {
-    await signIn("credentials", {
-      email: validated.data.email,
-      password: validated.data.password,
-      redirect: false,
-    });
-
-    // Get user role for redirect
+    // Get user role for redirect first
     const user = await prisma.user.findUnique({
       where: { email: validated.data.email.toLowerCase() },
       select: { role: true },
     });
-
-    if (!user) return { error: "Email atau password salah" };
 
     const roleRedirects: Record<string, string> = {
       super_admin: "/super-admin/dashboard",
@@ -33,11 +25,32 @@ export async function loginAction(formData: { email: string; password: string })
       mahasiswa: "/mahasiswa/dashboard",
     };
 
-    return { success: true, redirect: roleRedirects[user.role] || "/login" };
-  } catch (error) {
+    const redirectTo = user ? roleRedirects[user.role] : "/login";
+
+    await signIn("credentials", {
+      email: validated.data.email,
+      password: validated.data.password,
+      redirect: true,
+      redirectTo: redirectTo || "/login",
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    // If it's a redirect error from Next.js/Auth.js, we MUST throw it
+    // so Next.js can perform the actual redirect and set cookies!
+    if (error?.name === "RedirectError" || error?.message === "NEXT_REDIRECT" || error?.message?.includes("NEXT_REDIRECT")) {
+      throw error;
+    }
+
     if (error instanceof AuthError) {
       return { error: error.cause?.err?.message || "Email atau password salah" };
     }
+    
+    // Fallback for Next.js internal redirect error if type checking fails
+    if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+      throw error;
+    }
+
     return { error: "Terjadi kesalahan. Silakan coba lagi." };
   }
 }

@@ -31,11 +31,8 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const result = await loginAction(data);
-      if (result.error) {
+      if (result?.error) {
         toast.error(result.error);
-      } else if (result.success && result.redirect) {
-        toast.success("Berhasil masuk!");
-        window.location.href = result.redirect;
       }
     } catch {
       toast.error("Terjadi kesalahan. Silakan coba lagi.");
