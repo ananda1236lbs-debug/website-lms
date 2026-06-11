@@ -5,6 +5,22 @@ import { prisma } from "@/lib/db";
 import { loginSchema } from "@/lib/validations/user";
 import { AuthError } from "next-auth";
 
+export async function loginAction(data: any) {
+  try {
+    await signIn("credentials", {
+      email: data.email,
+      password: data.password,
+      redirect: false,
+    });
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { error: "Email atau password salah" };
+    }
+    throw error;
+  }
+}
+
 export async function getDashboardUrlAction() {
   const session = await auth();
   if (!session?.user?.role) return "/login";

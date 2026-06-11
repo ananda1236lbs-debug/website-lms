@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginInput } from "@/lib/validations/user";
-
-import { signIn } from "next-auth/react";
+import { loginAction } from "@/lib/actions/auth";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -31,15 +30,14 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginInput) => {
     setIsLoading(true);
     try {
-      const result = await signIn("credentials", {
-        redirect: false,
+      const result = await loginAction({
         email: data.email,
         password: data.password,
       });
 
       if (result?.error) {
         toast.error("Email atau password salah");
-      } else if (result?.ok) {
+      } else if (result?.success) {
         toast.success("Berhasil masuk!");
         // Let the middleware handle the dashboard redirection
         // by reloading the /login route which will intercept and redirect to the correct dashboard
