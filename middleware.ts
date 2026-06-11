@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth";
 import { Role } from "@/types";
 
 const publicPaths = ["/", "/about", "/contact", "/login", "/forgot-password"];
@@ -20,10 +19,9 @@ const roleDashboardMap: Record<Role, string> = {
   [Role.mahasiswa]: "/mahasiswa/dashboard",
 };
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Skip middleware for API routes, static files, and public assets
+export default auth((req) => {
+  const { pathname } = req.nextUrl;
+  
   if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
@@ -33,16 +31,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
+  const isLoggedIn = !!req.auth;
+  const userRole = req.auth?.user?.role as Role | undefined;
 
   // If user is authenticated and trying to access auth pages, redirect to dashboard
-  if (token && authPaths.includes(pathname)) {
-    const role = token.role as Role;
-    const dashboardPath = roleDashboardMap[role] || "/login";
-    return NextResponse.redirect(new URL(dashboardPath, request.url));
+  if (isLoggedIn && authPaths.includes(pathname)) {
+    const dashboardPath = userRole ? roleDashboardMap[userRole] : "/login";
+    return NextResponse.redirect(new URL(dashboardPath || "/login", req.url));
   }
 
   // Public paths are accessible without authentication
@@ -51,20 +46,21 @@ export async function middleware(request: NextRequest) {
   }
 
   // If not authenticated and trying to access protected route
-  if (!token) {
-    const loginUrl = new URL("/login", request.url);
+  if (!isLoggedIn) {
+    const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   // Check role-based access
-  const userRole = token.role as Role;
-  for (const [basePath, allowedRoles] of Object.entries(rolePathMap)) {
-    if (pathname.startsWith(basePath)) {
-      if (!allowedRoles.includes(userRole)) {
-        return NextResponse.redirect(new URL("/access-denied", request.url));
+  if (userRole) {
+    for (const [basePath, allowedRoles] of Object.entries(rolePathMap)) {
+      if (pathname.startsWith(basePath)) {
+        if (!allowedRoles.includes(userRole)) {
+          return NextResponse.redirect(new URL("/access-denied", req.url));
+        }
+        break;
       }
-      break;
     }
   }
 
@@ -76,7 +72,7 @@ export async function middleware(request: NextRequest) {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
   return response;
-}
+});
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
