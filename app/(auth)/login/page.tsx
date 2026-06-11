@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginInput } from "@/lib/validations/user";
-import { loginAction } from "@/lib/actions/auth";
+
 import { signIn } from "next-auth/react";
 import { getDashboardUrlAction } from "@/lib/actions/auth";
 import { toast } from "sonner";
