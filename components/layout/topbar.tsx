@@ -29,7 +29,7 @@ interface TopbarProps {
 }
 
 interface NotificationItem {
-  _id: string;
+  id: string;
   title: string;
   message: string;
   type: string;
